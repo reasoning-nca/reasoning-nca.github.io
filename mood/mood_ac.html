@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reasoning NCA: Maze-XL with Adaptive Compute</title>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,500,600,700"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../swissgl.js"></script>
+  <style>
+    #demo,
+    #demo.mood-ac-layout {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 14px;
+      margin: 0 auto;
+      padding: 16px 20px;
+      box-sizing: border-box;
+    }
+
+    /* 1) First row: Step display & Legend */
+    .top-bar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 4px;
+      box-sizing: border-box;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .step-counter {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text);
+      font-family: var(--font-mono, monospace);
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .canvas-legend {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: var(--text-secondary, #666);
+      flex-wrap: wrap;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .color-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 0px;
+      display: inline-block;
+      border: 1px solid rgba(0, 0, 0, 0.15);
+    }
+
+    /* 2) Second row: Demo card (full width) */
+    .demo-canvas-card {
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-panel, #f8f9fa);
+      border: 2px solid transparent;
+      border-radius: 8px;
+      padding: 2px;
+      box-sizing: border-box;
+      width: 100%;
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .demo-canvas-card.correct {
+      border-color: #008c33;
+      box-shadow: 0 0 8px rgba(0, 140, 51, 0.35);
+    }
+
+    #demo-canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 4px;
+      cursor: crosshair;
+      background-color: var(--bg-panel, #f8f9fa);
+      image-rendering: pixelated;
+    }
+
+    /* 3 & 4) Controls rows */
+    .demo-controls-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .demo-controls-wrapper .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .demo-controls-wrapper .controls-row .speed {
+      flex: 1;
+      max-width: 220px;
+      min-width: 110px;
+    }
+
+    .mode-group .group-label {
+      font-size: 12px;
+      font-weight: 500;
+      padding: 0 4px;
+      color: var(--text);
+      user-select: none;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SVG Icon Definitions (Cells2Pixels style) -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="playIcon" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"></path>
+    </symbol>
+    <symbol id="pauseIcon" viewBox="0 0 24 24">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+    </symbol>
+    <symbol id="resetIcon" viewBox="0 0 24 24">
+      <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z">
+      </path>
+    </symbol>
+    <symbol id="stepIcon" viewBox="0 0 24 24">
+      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+    </symbol>
+    <symbol id="handIcon" viewBox="0 0 24 24">
+      <path
+        d="M10 9V5a1 1 0 0 1 2 0v4h1V3a1 1 0 0 1 2 0v6h1V4a1 1 0 0 1 2 0v7a6 6 0 0 1-6 6H9a6 6 0 0 1-6-6v-2a1 1 0 0 1 2 0v1h1V6a1 1 0 0 1 2 0v3h2z" />
+    </symbol>
+    <symbol id="pointerIcon" viewBox="0 0 24 24">
+      <path
+        d="M19.98 14.82l-.63 4.46c-.14.99-.99 1.72-1.98 1.72h-6.16c-.53 0-1.29-.21-1.66-.59L5 15.62l.83-.84c.24-.24.58-.35.92-.28L10 15.24V4.5C10 3.67 10.67 3 11.5 3S13 3.67 13 4.5v6h.91c.31 0 .62.07.89.21l4.09 2.04c.77.39 1.21 1.22 1.09 2.07z" />
+    </symbol>
+  </svg>
+
+  <div class="l-body-outset mood-ac-layout" id="demo">
+    <!-- 1) First row: Step display & Legend -->
+    <div class="top-bar-header">
+      <div class="step-counter" id="step-count">Step: 0</div>
+      <div class="canvas-legend">
+        <span class="legend-item"><span class="color-dot" style="background: #000000;"></span>Wall</span>
+        <span class="legend-item"><span class="color-dot" style="background: #7f7f7f;"></span>Empty</span>
+        <span class="legend-item"><span class="color-dot" style="background: #e600e6;"></span>Source/Target</span>
+        <span class="legend-item"><span class="color-dot" style="background: #dda0dd;"></span>Currently Active</span>
+      </div>
+    </div>
+
+    <!-- 2) Second row: Demo canvas (full width on 201x201 maze) -->
+    <div class="demo-canvas-card" id="demo-card">
+      <canvas id="demo-canvas" width="609" height="609"></canvas>
+    </div>
+
+    <!-- 3 & 4) Demo controls -->
+    <div class="demo-controls-wrapper">
+      <!-- Row 1: (i) Play-Pause, Reset, Step, (ii) Speed, Cell Fire Rate sliders, (iii) New Maze -->
+      <div class="controls-row">
+        <div class="control-buttons">
+          <span id="play-pause" class="icon-btn" title="Play/Pause (Space)">
+            <svg class="demo-icon" id="play">
+              <title>Play</title>
+              <use xlink:href="#playIcon"></use>
+            </svg>
+            <svg class="demo-icon" id="pause" style="display: none;">
+              <title>Pause</title>
+              <use xlink:href="#pauseIcon"></use>
+            </svg>
+          </span>
+          <span id="reset" class="icon-btn" title="Reset (R)">
+            <svg class="demo-icon">
+              <title>Reset</title>
+              <use xlink:href="#resetIcon"></use>
+            </svg>
+          </span>
+          <span id="step" class="icon-btn" title="Step (S)">
+            <svg class="demo-icon">
+              <title>Step</title>
+              <use xlink:href="#stepIcon"></use>
+            </svg>
+          </span>
+        </div>
+
+        <div class="speed" title="Simulation Speed">
+          <div class="slider-wrap">
+            <input type="range" id="speed" min="1" max="120" step="1" value="60">
+            <button type="button" class="slider-reset-btn" id="reset-speed" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Speed: <label id="speedLabel">60 steps/s</label></span>
+        </div>
+
+        <div class="speed" title="Cell Fire Rate">
+          <div class="slider-wrap">
+            <input type="range" id="fire-rate" min="0" max="1" step="0.05" value="0.8">
+            <button type="button" class="slider-reset-btn" id="reset-fire-rate" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Fire Rate: <label id="fireRateLabel">0.80</label></span>
+        </div>
+
+        <button class="btn-pill primary" id="new-maze" title="New Maze">
+          New Maze
+        </button>
+      </div>
+
+      <!-- Row 2: (i) Adaptive Compute (on/off), (ii) Brush Type (Damage/Noise), (iii) Radius, (iv) Noise Std -->
+      <div class="controls-row">
+        <div class="mode-group" id="ac-group" title="Adaptive Compute">
+          <span class="group-label">Adaptive Compute</span>
+          <label class="mode-btn ac-mode-btn active" title="Adaptive Compute ON">
+            <input type="radio" name="ac_toggle" value="on" checked>
+            <span>ON</span>
+          </label>
+          <label class="mode-btn ac-mode-btn" title="Adaptive Compute OFF">
+            <input type="radio" name="ac_toggle" value="off">
+            <span>OFF</span>
+          </label>
+        </div>
+
+        <div id="brush_type" class="mode-group">
+          <label class="mode-btn brush-mode-btn active" title="Damage">
+            <input type="radio" name="brush_type" value="damage" checked>
+            <span>Damage</span>
+          </label>
+          <label class="mode-btn brush-mode-btn" title="Noise">
+            <input type="radio" name="brush_type" value="noise">
+            <span>Noise</span>
+          </label>
+        </div>
+
+        <div class="speed" title="Noise/Damage Radius">
+          <div class="slider-wrap">
+            <input type="range" id="noise-radius" min="0" max="10" step="1" value="6">
+            <button type="button" class="slider-reset-btn" id="reset-noise-radius" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Radius: <label id="noiseRadiusLabel">13x13</label></span>
+        </div>
+
+        <div class="speed" title="Noise Std">
+          <div class="slider-wrap">
+            <input type="range" id="noise-std" min="0" max="1" step="0.05" value="0.3">
+            <button type="button" class="slider-reset-btn" id="reset-noise-std" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Noise Std: <label id="noiseStdLabel">0.30</label></span>
+        </div>
+      </div>
+
+      <div id="demo-tip">
+        <svg>
+          <use xlink:href="#pointerIcon"></use>
+        </svg>
+        <div class="hint" id="tip-text">Click or drag on the maze to damage (zero out) corridor cells.</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createDemoMood } from './create_demo.js';
+    createDemoMood('demo');
+  </script>
+</body>
+
+</html>

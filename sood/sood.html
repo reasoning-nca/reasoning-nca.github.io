@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reasoning NCA: Sudoku-OOD Demo</title>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,500,600,700"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../swissgl.js"></script>
+  <style>
+    #demo,
+    #demo.sood-layout {
+      display: flex !important;
+      flex-direction: column !important;
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 16px;
+      gap: 16px;
+      user-select: none;
+    }
+
+    .top-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 4px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .top-bar-controls {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+    }
+
+    .top-bar-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text);
+    }
+
+    .top-bar-item label {
+      font-family: var(--font-heading);
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    .top-bar-item select {
+      min-width: 75px;
+      padding: 4px 8px;
+    }
+
+    .step-counter {
+      font-size: 14px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text);
+      margin-left: auto;
+    }
+
+    /* 4 grids per row */
+    .trials-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+    }
+
+    @media (max-width: 768px) {
+      .trials-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .trial-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-panel, #f8f9fa);
+      border: 2px solid transparent;
+      border-radius: 4px;
+      padding: 6px;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      user-select: none;
+      box-sizing: border-box;
+    }
+
+    .trial-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-mono);
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      padding: 0 2px;
+      white-space: nowrap;
+    }
+
+    .trial-title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .conf-scalar {
+      color: var(--text);
+    }
+
+    .trial-badge {
+      font-size: 12px;
+      font-weight: 700;
+      color: #008c33;
+      display: none;
+      margin-left: 4px;
+    }
+
+    .trial-canvas {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      display: block;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 2px;
+      cursor: crosshair;
+      background-color: var(--bg-panel, #f8f9fa);
+    }
+
+    /* Correct (matches target grid): checkmark & green border */
+    .trial-card.correct {
+      border-color: #008c33 !important;
+      box-shadow: 0 0 6px rgba(0, 140, 51, 0.35);
+    }
+
+    .trial-card.correct .trial-badge {
+      display: inline-block;
+    }
+
+    /* Highest confidence: blue border */
+    .trial-card.highest-conf {
+      border-color: steelblue;
+      box-shadow: 0 0 6px rgba(70, 130, 180, 0.45);
+    }
+
+    .demo-controls-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .demo-controls-wrapper .controls-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      width: 100%;
+    }
+
+    .demo-controls-wrapper .controls-row .speed {
+      flex: 1;
+      max-width: 220px;
+      min-width: 110px;
+    }
+
+    .noise-title {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--text);
+      letter-spacing: 0.2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SVG Icon Definitions -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="playIcon" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"></path>
+    </symbol>
+    <symbol id="pauseIcon" viewBox="0 0 24 24">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+    </symbol>
+    <symbol id="resetIcon" viewBox="0 0 24 24">
+      <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z">
+      </path>
+    </symbol>
+    <symbol id="stepIcon" viewBox="0 0 24 24">
+      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+    </symbol>
+    <symbol id="pointerIcon" viewBox="0 0 24 24">
+      <path
+        d="M19.98 14.82l-.63 4.46c-.14.99-.99 1.72-1.98 1.72h-6.16c-.53 0-1.29-.21-1.66-.59L5 15.62l.83-.84c.24-.24.58-.35.92-.28L10 15.24V4.5C10 3.67 10.67 3 11.5 3S13 3.67 13 4.5v6h.91c.31 0 .62.07.89.21l4.09 2.04c.77.39 1.21 1.22 1.09 2.07z" />
+    </symbol>
+  </svg>
+
+  <div class="l-body-outset sood-layout" id="demo">
+    <!-- 1) First row: Difficulty, Num Samples, and Step Counter -->
+    <div class="top-bar">
+      <div class="top-bar-controls">
+        <div class="top-bar-item">
+          <label for="difficulty-select">Difficulty:</label>
+          <select id="difficulty-select" class="select-dropdown">
+            <!-- Dynamically populated from 47 to 64 -->
+          </select>
+        </div>
+
+        <div class="top-bar-item">
+          <label for="samples-select">Num Samples:</label>
+          <select id="samples-select" class="select-dropdown">
+            <option value="4">4</option>
+            <option value="8" selected>8</option>
+            <option value="12">12</option>
+            <option value="16">16</option>
+            <option value="20">20</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="step-counter" id="step-count">Step: 0</div>
+    </div>
+
+    <!-- 2) Second row(s): num_samples parallel demo rollouts (4 grids per row) -->
+    <div class="trials-grid" id="trials-grid">
+      <!-- Trial cards populated dynamically by create_demo.js -->
+    </div>
+
+    <!-- 3 & 4) Demo & Brush Controls -->
+    <div class="demo-controls-wrapper">
+      <!-- Row (i): play-pause, reset, step .... Speed .... New Sudoku -->
+      <div class="controls-row">
+        <div class="control-buttons">
+          <span id="play-pause" class="icon-btn" title="Play/Pause">
+            <svg class="demo-icon" id="play">
+              <title>Play</title>
+              <use xlink:href="#playIcon"></use>
+            </svg>
+            <svg class="demo-icon" id="pause" style="display: none;">
+              <title>Pause</title>
+              <use xlink:href="#pauseIcon"></use>
+            </svg>
+          </span>
+          <span id="reset" class="icon-btn" title="Reset">
+            <svg class="demo-icon">
+              <title>Reset</title>
+              <use xlink:href="#resetIcon"></use>
+            </svg>
+          </span>
+          <span id="step" class="icon-btn" title="Step">
+            <svg class="demo-icon">
+              <title>Step</title>
+              <use xlink:href="#stepIcon"></use>
+            </svg>
+          </span>
+        </div>
+
+        <div class="speed" title="Simulation Speed">
+          <div class="slider-wrap">
+            <input type="range" id="speed" min="1" max="60" step="1" value="15">
+            <button type="button" class="slider-reset-btn" id="reset-speed" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Speed: <label id="speedLabel">15 steps/s</label></span>
+        </div>
+
+        <button class="btn-pill primary" id="new-sudoku" title="New Sudoku">
+          New Sudoku
+        </button>
+      </div>
+
+      <!-- Row (ii): Add Noise title, Noise Radius slider, Noise Std slider -->
+      <div class="controls-row">
+        <div class="noise-title">
+          <span>Add Noise: </span>
+        </div>
+
+        <div class="speed" title="Noise Radius">
+          <div class="slider-wrap">
+            <input type="range" id="noise-radius" min="0" max="4" step="1" value="1">
+            <button type="button" class="slider-reset-btn" id="reset-noise-radius" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Noise Radius: <label id="noiseRadiusLabel">3x3</label></span>
+        </div>
+
+        <div class="speed" title="Noise Std">
+          <div class="slider-wrap">
+            <input type="range" id="noise-std" min="0" max="1" step="0.05" value="0.3">
+            <button type="button" class="slider-reset-btn" id="reset-noise-std" title="Reset to default">
+              <svg>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </button>
+          </div>
+          <span>Noise Std: <label id="noiseStdLabel">0.30</label></span>
+        </div>
+      </div>
+
+      <div id="demo-tip">
+        <svg>
+          <use xlink:href="#pointerIcon"></use>
+        </svg>
+        <div class="hint">Click on any grid rollout to inject noise live, and see if you can get the NCA out of a local
+          minima!</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createDemoSood } from './create_demo.js';
+    createDemoSood('demo');
+  </script>
+</body>
+
+</html>

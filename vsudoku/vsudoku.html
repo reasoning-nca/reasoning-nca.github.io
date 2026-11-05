@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reasoning NCA: Visual Sudoku Demo</title>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,500,600,700"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../swissgl.js"></script>
+  <style>
+    #demo-canvas {
+      background-color: var(--bg-panel, #f8f9fa);
+      cursor: crosshair;
+    }
+
+    .controls-row .speed {
+      flex: 1;
+      max-width: 190px;
+      min-width: 100px;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SVG Icon Definitions -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="playIcon" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"></path>
+    </symbol>
+    <symbol id="pauseIcon" viewBox="0 0 24 24">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+    </symbol>
+    <symbol id="resetIcon" viewBox="0 0 24 24">
+      <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z">
+      </path>
+    </symbol>
+    <symbol id="stepIcon" viewBox="0 0 24 24">
+      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+    </symbol>
+    <symbol id="pointerIcon" viewBox="0 0 24 24">
+      <path
+        d="M19.98 14.82l-.63 4.46c-.14.99-.99 1.72-1.98 1.72h-6.16c-.53 0-1.29-.21-1.66-.59L5 15.62l.83-.84c.24-.24.58-.35.92-.28L10 15.24V4.5C10 3.67 10.67 3 11.5 3S13 3.67 13 4.5v6h.91c.31 0 .62.07.89.21l4.09 2.04c.77.39 1.21 1.22 1.09 2.07z" />
+    </symbol>
+    <symbol id="chevronDown" viewBox="0 0 24 24">
+      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+    </symbol>
+  </svg>
+
+  <div class="l-body-outset grid" id="demo">
+    <!-- 1) Left column -->
+    <div class="canvas-column">
+      <!-- 1.a) header that shows step -->
+      <div class="canvas-header">
+        <div class="step-counter" id="step-count">Step: 0</div>
+      </div>
+
+      <!-- 1.b) demo canvas that shows the rollout -->
+      <canvas id="demo-canvas" width="512" height="512"></canvas>
+
+      <!-- 1.c) demo controls with 2 rows -->
+      <div class="demo-controls">
+        <!-- Row (i): play-pause, reset, step, speed, new sudoku -->
+        <div class="controls-row">
+          <div class="control-buttons">
+            <span id="play-pause" class="icon-btn" title="Play/Pause">
+              <svg class="demo-icon" id="play">
+                <title>Play</title>
+                <use xlink:href="#playIcon"></use>
+              </svg>
+              <svg class="demo-icon" id="pause" style="display: none;">
+                <title>Pause</title>
+                <use xlink:href="#pauseIcon"></use>
+              </svg>
+            </span>
+            <span id="reset" class="icon-btn" title="Reset">
+              <svg class="demo-icon">
+                <title>Reset</title>
+                <use xlink:href="#resetIcon"></use>
+              </svg>
+            </span>
+            <span id="step" class="icon-btn" title="Step">
+              <svg class="demo-icon">
+                <title>Step</title>
+                <use xlink:href="#stepIcon"></use>
+              </svg>
+            </span>
+          </div>
+
+          <div class="speed" title="Simulation Speed">
+            <div class="slider-wrap">
+              <input type="range" id="speed" min="1" max="60" step="1" value="30">
+              <button type="button" class="slider-reset-btn" id="reset-speed" title="Reset to default">
+                <svg>
+                  <use xlink:href="#resetIcon"></use>
+                </svg>
+              </button>
+            </div>
+            <span>Speed: <label id="speedLabel">30 steps/s</label></span>
+          </div>
+
+          <button class="btn-pill primary" id="new-sudoku" title="New Sudoku">
+            New Sudoku
+          </button>
+        </div>
+
+        <!-- Row (ii): brush size (slider) and brush color (black or white) -->
+        <div class="controls-row">
+          <div class="speed" title="Brush Size">
+            <div class="slider-wrap">
+              <input type="range" id="brush-size" min="1" max="10" step="0.5" value="2">
+              <button type="button" class="slider-reset-btn" id="reset-brush-size" title="Reset to default">
+                <svg>
+                  <use xlink:href="#resetIcon"></use>
+                </svg>
+              </button>
+            </div>
+            <span>Brush Size: <label id="brushSizeLabel">2.0 px</label></span>
+          </div>
+
+          <div id="brush_type" class="brush-group">
+            <label class="brush-option active" title="White (Ink)">
+              <input type="radio" name="brush" value="white" checked>
+              <span class="color-dot" style="background: #ffffff; border: 1px solid #aaa;"></span>
+              <span>White</span>
+            </label>
+            <label class="brush-option" title="Black (Erase)">
+              <input type="radio" name="brush" value="black">
+              <span class="color-dot" style="background: #000000; border: 1px solid #aaa;"></span>
+              <span>Black</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div id="demo-tip">
+        <svg>
+          <use xlink:href="#pointerIcon"></use>
+        </svg>
+        <div class="hint">Click and drag on the board to draw with ink (white) or erase (black) live.</div>
+      </div>
+    </div>
+
+    <!-- 2) Right column -->
+    <div id="pattern-controls">
+      <!-- 2.a) control div with title "Difficulty" and dropdown selector -->
+      <div class="pattern-selector-title">Difficulty</div>
+      <select id="difficulty-select" class="select-dropdown">
+        <option value="easy" selected>Easy</option>
+        <option value="hard">Hard</option>
+      </select>
+
+      <!-- 2.c) plot toggle with title "Show Accuracy" and live plot -->
+      <div class="plot-toggle-header" id="plot-toggle">
+        <div class="pattern-selector-title" id="plot-toggle-title" style="margin-top: 0;">Show Accuracy</div>
+        <svg class="plot-toggle-icon">
+          <use xlink:href="#chevronDown"></use>
+        </svg>
+      </div>
+      <div class="plot-container" id="plot-container">
+        <canvas id="metric-plot"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createDemoVsudoku } from './create_demo.js';
+    const canvas = document.getElementById('demo-canvas');
+    const glsl = SwissGL(canvas);
+    createDemoVsudoku(glsl, 'demo');
+  </script>
+</body>
+
+</html>

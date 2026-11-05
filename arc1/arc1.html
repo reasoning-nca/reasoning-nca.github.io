@@ -1,0 +1,528 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reasoning NCA: ARC-AGI-1 Demo</title>
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans:400,500,700|Noto+Sans:400,500,600,700"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="../style.css" />
+  <script src="../swissgl.js"></script>
+  <style>
+    #demo.horizontal-layout {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+      padding: 0 2px;
+    }
+
+    .demo-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      width: 100%;
+    }
+
+    .canvas-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .canvas-card-title {
+      font-family: var(--font-heading);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+      text-align: center;
+    }
+
+    #step-count.canvas-card-title {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+
+    .canvas-card canvas {
+      border: 0px solid lightgrey;
+      border-radius: 0px;
+      image-rendering: pixelated;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: var(--bg-panel);
+      display: block;
+      box-shadow: none;
+    }
+
+    #input-canvas,
+    #demo-canvas,
+    #target-canvas {
+      cursor: crosshair;
+    }
+
+    .controls-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .control-col {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
+    .control-col-title {
+      font-family: var(--font-heading);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .color-strip {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      flex-wrap: nowrap;
+      width: 100%;
+    }
+
+    .color-btn {
+      flex: 0 1 24px;
+      width: 24px;
+      height: 24px;
+      min-width: 16px;
+      max-width: 24px;
+      aspect-ratio: 1 / 1;
+      border-radius: 2px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.1s ease, border-color 0.15s ease;
+      padding: 0;
+    }
+
+    .color-btn:hover {
+      transform: scale(1.15);
+      z-index: 2;
+    }
+
+    .color-btn input[type="radio"] {
+      display: none;
+    }
+
+    .color-btn.active,
+    .color-btn:has(input:checked) {
+      border-color: goldenrod !important;
+      box-shadow: 0 0 0 1px #000;
+      transform: scale(1.15);
+      z-index: 1;
+    }
+
+    .brush-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 8px;
+      line-height: 1.3;
+      text-align: center;
+      justify-content: center;
+    }
+
+    .brush-hint svg {
+      width: 14px;
+      height: 14px;
+      fill: goldenrod;
+      flex-shrink: 0;
+    }
+
+    .sim-col .control-buttons {
+      margin-bottom: 8px;
+    }
+
+    .sim-col .sliders-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .sim-col .speed {
+      max-width: 100%;
+      width: 100%;
+    }
+
+    .plot-col .plot-toggle-header {
+      margin-top: 0;
+      cursor: pointer;
+    }
+
+    .plot-col .plot-container {
+      width: 100%;
+      margin-top: 6px;
+    }
+
+    #metric-plot {
+      width: 100%;
+      height: 130px;
+      background: transparent;
+      border: none;
+      border-radius: 0;
+    }
+
+    .section-block {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+      border-top: none;
+      padding-top: 4px;
+    }
+
+    .section-header-row {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+    }
+
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+    }
+
+    .task-row .pattern-selector-title {
+      margin: 0;
+      white-space: nowrap;
+    }
+
+    .task-row #task-select {
+      flex: 1;
+      width: auto;
+    }
+
+    .task-row #new-task {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .pairs-row {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      width: 100%;
+      flex-wrap: wrap;
+    }
+
+    .pairs-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .pair-shelf {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      padding: 2px 0;
+    }
+
+    .pair-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      width: 116px;
+      box-sizing: border-box;
+    }
+
+    .pair-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+      text-align: center;
+      font-family: var(--font-heading);
+    }
+
+    .subcard.active .pair-label {
+      color: #000;
+      font-weight: 700;
+    }
+
+    .pair-thumbs {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+      width: 100%;
+    }
+
+    .pair-arrow {
+      font-size: 13px;
+      font-weight: 700;
+      color: rgba(0, 0, 0, 0.4);
+      line-height: 1;
+      user-select: none;
+    }
+
+    .subcard.active .pair-arrow {
+      color: #000;
+    }
+
+    .mini-grid {
+      width: 38px;
+      height: 38px;
+      aspect-ratio: 1 / 1;
+      border: 1px solid #d0d7de;
+      border-radius: 0px;
+      image-rendering: pixelated;
+      background: var(--bg-panel, #f8f9fa);
+      display: block;
+      box-shadow: none;
+    }
+
+    .pair-subrow-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      margin: 4px 0 2px 2px;
+    }
+
+    @media (max-width: 768px) {
+
+      .demo-row,
+      .controls-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- SVG Icon Definitions -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <symbol id="playIcon" viewBox="0 0 24 24">
+      <path d="M8 5v14l11-7z"></path>
+    </symbol>
+    <symbol id="pauseIcon" viewBox="0 0 24 24">
+      <path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"></path>
+    </symbol>
+    <symbol id="resetIcon" viewBox="0 0 24 24">
+      <path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z">
+      </path>
+    </symbol>
+    <symbol id="stepIcon" viewBox="0 0 24 24">
+      <path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z" />
+    </symbol>
+    <symbol id="pointerIcon" viewBox="0 0 24 24">
+      <path
+        d="M19.98 14.82l-.63 4.46c-.14.99-.99 1.72-1.98 1.72h-6.16c-.53 0-1.29-.21-1.66-.59L5 15.62l.83-.84c.24-.24.58-.35.92-.28L10 15.24V4.5C10 3.67 10.67 3 11.5 3S13 3.67 13 4.5v6h.91c.31 0 .62.07.89.21l4.09 2.04c.77.39 1.21 1.22 1.09 2.07z" />
+    </symbol>
+    <symbol id="chevronDown" viewBox="0 0 24 24">
+      <path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z" />
+    </symbol>
+  </svg>
+
+  <div class="l-body-outset horizontal-layout" id="demo">
+    <!-- Demo row with 3 cols: (a) input image, (b) demo canvas with step counter, (c) target image -->
+    <div class="demo-row">
+      <div class="canvas-card">
+        <div class="canvas-card-title">Input</div>
+        <canvas id="input-canvas" width="512" height="512"></canvas>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-card-title step-counter" id="step-count">Step: 0 / 64</div>
+        <canvas id="demo-canvas" width="512" height="512"></canvas>
+      </div>
+      <div class="canvas-card">
+        <div class="canvas-card-title">Target</div>
+        <canvas id="target-canvas" width="512" height="512"></canvas>
+      </div>
+    </div>
+
+    <!-- 3) Control rows with 3 cols -->
+    <div class="controls-grid">
+      <!-- Col (a): Brush type selector with colors -->
+      <div class="control-col brush-col">
+        <div class="control-col-title">Brush Colors</div>
+        <div id="brush_type" class="color-strip">
+          <label class="color-btn" title="0: Black" style="background: #000000; border: 1px solid #444;">
+            <input type="radio" name="brush" value="0">
+          </label>
+          <label class="color-btn active" title="1: Blue" style="background: #0074D9;">
+            <input type="radio" name="brush" value="1" checked>
+          </label>
+          <label class="color-btn" title="2: Red" style="background: #FF4136;">
+            <input type="radio" name="brush" value="2">
+          </label>
+          <label class="color-btn" title="3: Green" style="background: #2ECC40;">
+            <input type="radio" name="brush" value="3">
+          </label>
+          <label class="color-btn" title="4: Yellow" style="background: #FFDC00;">
+            <input type="radio" name="brush" value="4">
+          </label>
+          <label class="color-btn" title="5: Grey" style="background: #AAAAAA;">
+            <input type="radio" name="brush" value="5">
+          </label>
+          <label class="color-btn" title="6: Magenta" style="background: #F012BE;">
+            <input type="radio" name="brush" value="6">
+          </label>
+          <label class="color-btn" title="7: Orange" style="background: #FF851B;">
+            <input type="radio" name="brush" value="7">
+          </label>
+          <label class="color-btn" title="8: Teal" style="background: #7FDBFF;">
+            <input type="radio" name="brush" value="8">
+          </label>
+          <label class="color-btn" title="9: Maroon" style="background: #870E25;">
+            <input type="radio" name="brush" value="9">
+          </label>
+        </div>
+        <div id="demo-tip">
+          <svg>
+            <use xlink:href="#pointerIcon"></use>
+          </svg>
+          <div class="hint">Click to draw new inputs/targets or to perturb NCA cells</div>
+        </div>
+      </div>
+
+      <!-- Col (b): play-pause, reset, step, speed slider, fire rate slider -->
+      <div class="control-col sim-col">
+        <div class="control-buttons">
+          <span id="play-pause" class="icon-btn" title="Play/Pause">
+            <svg class="demo-icon" id="play">
+              <title>Play</title>
+              <use xlink:href="#playIcon"></use>
+            </svg>
+            <svg class="demo-icon" id="pause" style="display: none;">
+              <title>Pause</title>
+              <use xlink:href="#pauseIcon"></use>
+            </svg>
+          </span>
+          <span id="reset" class="icon-btn" title="Reset">
+            <svg class="demo-icon">
+              <title>Reset</title>
+              <use xlink:href="#resetIcon"></use>
+            </svg>
+          </span>
+          <span id="step" class="icon-btn" title="Step">
+            <svg class="demo-icon">
+              <title>Step</title>
+              <use xlink:href="#stepIcon"></use>
+            </svg>
+          </span>
+        </div>
+
+        <div class="sliders-wrap">
+          <div class="speed" title="Simulation Speed">
+            <div class="slider-wrap">
+              <input type="range" id="speed" min="1" max="60" step="1" value="20">
+              <button type="button" class="slider-reset-btn" id="reset-speed" title="Reset to default">
+                <svg>
+                  <use xlink:href="#resetIcon"></use>
+                </svg>
+              </button>
+            </div>
+            <span>Speed: <label id="speedLabel">20 steps/s</label></span>
+          </div>
+
+          <div class="speed" title="Cell Fire Rate">
+            <div class="slider-wrap">
+              <input type="range" id="fire-rate" min="0.1" max="1" step="0.05" value="1.0">
+              <button type="button" class="slider-reset-btn" id="reset-fire-rate" title="Reset to default">
+                <svg>
+                  <use xlink:href="#resetIcon"></use>
+                </svg>
+              </button>
+            </div>
+            <span>Fire Rate: <label id="fireRateLabel">1.00</label></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Col (c): Show accuracy toggle plot -->
+      <div class="control-col plot-col">
+        <div class="plot-toggle-header" id="plot-toggle">
+          <div class="pattern-selector-title" id="plot-toggle-title" style="margin: 0;">Show Accuracy</div>
+          <svg class="plot-toggle-icon">
+            <use xlink:href="#chevronDown"></use>
+          </svg>
+        </div>
+        <div class="plot-container" id="plot-container">
+          <canvas id="metric-plot"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4) Task selector row with title, dropdown, and New Task button on the same row -->
+    <div class="section-block">
+      <div class="task-row">
+        <label for="task-select" class="pattern-selector-title">Task</label>
+        <select id="task-select" class="select-dropdown"></select>
+        <button class="btn-pill primary" id="new-task" title="Sample Random Task">New Task</button>
+      </div>
+    </div>
+
+    <!-- 5) Input-Output pair selector row with train/test subcards on the same row -->
+    <div class="section-block">
+      <div class="section-header-row">
+        <div class="pattern-selector-title" style="margin: 0 0 4px 0;">Input-Output Pair</div>
+      </div>
+      <div class="pairs-row">
+        <div class="pairs-group">
+          <div class="pair-subrow-title">TRAINING PAIRS</div>
+          <div id="train-shelf" class="pair-shelf"></div>
+        </div>
+        <div class="pairs-group">
+          <div class="pair-subrow-title">TESTING PAIRS</div>
+          <div id="test-shelf" class="pair-shelf"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { createDemoArc1 } from './create_demo.js';
+    const canvas = document.getElementById('demo-canvas');
+    const glsl = SwissGL(canvas);
+    createDemoArc1(glsl, 'demo');
+  </script>
+</body>
+
+</html>

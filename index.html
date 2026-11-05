@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reasoning with Neural Cellular Automata</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --text: #202124;
+      --text-muted: #5f6368;
+      --accent: #1a73e8;
+      --border: #e8eaed;
+      --card-bg: #f8f9fa;
+      --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      --max-width: 960px;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: var(--max-width);
+      margin: 0 auto;
+      padding: 40px 20px 80px 20px;
+    }
+
+    header {
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    h1.main-title {
+      font-size: 38px;
+      line-height: 1.2;
+      font-weight: 700;
+      margin: 0 0 10px 0;
+      color: #111827;
+      letter-spacing: -0.02em;
+    }
+
+    .main-subtitle {
+      font-size: 20px;
+      color: var(--text-muted);
+      margin: 0 0 20px 0;
+      font-weight: 400;
+      line-height: 1.4;
+    }
+
+    /* Section Headings */
+    section {
+      margin-top: 48px;
+    }
+
+    h2.section-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0 0 6px 0;
+      padding-top: 28px;
+      border-top: 1px solid var(--border);
+      line-height: 1.3;
+    }
+
+    .section-subtitle {
+      font-size: 20px;
+      font-weight: 600;
+      color: #374151;
+      margin: 2px 0 16px 0;
+      line-height: 1.4;
+    }
+
+    /* Demo cards */
+    .demo-container,
+    .demo-card {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 0px;
+      overflow: hidden;
+      background: var(--card-bg);
+      margin: 16px 0 28px 0;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: box-shadow 0.15s ease;
+    }
+
+    .demo-container:hover,
+    .demo-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .demo-frame {
+      width: 100%;
+      height: 620px;
+      border: none;
+      display: block;
+      background: var(--card-bg);
+      transition: height 0.2s ease;
+      overflow: hidden;
+    }
+
+    .demo-frame.tall {
+      height: 660px;
+    }
+
+    h3[id],
+    .demo-container[id],
+    section[id] {
+      scroll-margin-top: 24px;
+    }
+
+    /* Hook video showcase */
+    .hook-container {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin: 24px 0 36px 0;
+    }
+
+    .hook-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 0px;
+      padding: 8px;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+    }
+
+    .hook-card:hover {
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      transform: translateY(-2px);
+    }
+
+    .hook-card:hover .hook-label {
+      color: var(--accent);
+    }
+
+    .hook-video {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      background: #111827;
+      border-radius: 0px;
+      display: block;
+      pointer-events: none;
+    }
+
+    .hook-label {
+      margin-top: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #374151;
+      text-align: center;
+      letter-spacing: -0.01em;
+    }
+
+    @media (max-width: 768px) {
+      .hook-container {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
+    }
+
+    @media (max-width: 440px) {
+      .hook-container {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <header>
+      <h1 class="main-title">Reasoning with Neural Cellular Automata</h1>
+      <div class="main-subtitle">Interactive web demos accompanying ICLR Submission #32227
+      </div>
+    </header>
+
+    <!-- Hook: Autolooped rollout videos linking to demos -->
+    <div class="hook-container">
+      <a href="#demo-mhard" class="hook-card" title="Jump to Maze-Hard Demo">
+        <video class="hook-video" autoplay loop muted playsinline preload="auto">
+          <source src="./assets/videos/mhard_rollout.mp4" type="video/mp4">
+        </video>
+        <div class="hook-label">Maze-Hard</div>
+      </a>
+      <a href="#demo-sext" class="hook-card" title="Jump to Sudoku-Extreme Demo">
+        <video class="hook-video" autoplay loop muted playsinline preload="auto">
+          <source src="./assets/videos/sext_rollout.mp4" type="video/mp4">
+        </video>
+        <div class="hook-label">Sudoku-Extreme</div>
+      </a>
+      <a href="#demo-arc1" class="hook-card" title="Jump to ARC-AGI-1 Demo">
+        <video class="hook-video" autoplay loop muted playsinline preload="auto">
+          <source src="./assets/videos/arc1_rollout.mp4" type="video/mp4">
+        </video>
+        <div class="hook-label">ARC-AGI-1</div>
+      </a>
+      <a href="#demo-vsudoku" class="hook-card" title="Jump to Visual Sudoku Demo">
+        <video class="hook-video" autoplay loop muted playsinline preload="auto">
+          <source src="./assets/videos/vsudoku_rollout.mp4" type="video/mp4">
+        </video>
+        <div class="hook-label">Visual Sudoku</div>
+      </a>
+    </div>
+
+    <!-- Section 1: Reasoning with NCAs -->
+    <section id="section-reasoning">
+      <h2 class="section-title">Solving visual reasoning benchmarks with fully local rules</h2>
+
+      <h3 id="demo-mhard">Maze-Hard</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./mhard/mhard.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+
+      <h3 id="demo-sext">Sudoku-Extreme</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./sext/sext.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+
+      <h3 id="demo-arc1">ARC-AGI-1</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame tall" src="./arc1/arc1.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </section>
+
+    <!-- Section 2: Out-of-distribution Generalization -->
+    <section id="section-generalization">
+      <h2 class="section-title">Out-of-distribution generalization</h2>
+
+      <h3 id="demo-sood">Training on simple sudokus, testing on harder ones</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./sood/sood.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+
+      <h3 id="demo-mood">Training on small mazes, testing on larger ones</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./mood/mood.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </section>
+
+    <!-- Section 3: Robustness under Pressure -->
+    <section id="section-robustness">
+      <h2 class="section-title">Robustness under limited compute</h2>
+
+      <h3 id="demo-mood-ac">Adaptive Compute &amp; Perturbations</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./mood/mood_ac.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </section>
+
+    <!-- Section 4: Reasoning at Scale -->
+    <section id="section-scaling">
+      <h2 class="section-title">Reasoning with thousands of cells in pixel space</h2>
+
+      <h3 id="demo-vsudoku">Visual Sudoku (256x256 Pixels)</h3>
+      <div class="demo-container demo-card">
+        <iframe class="demo-frame" src="./vsudoku/vsudoku.html" loading="lazy" scrolling="no"></iframe>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Ensure hook videos play and loop
+    document.querySelectorAll('.hook-video').forEach((video) => {
+      video.play().catch(() => { });
+    });
+
+    // Auto-adjust iframe height to match inner document content height so it expands and shrinks cleanly
+    function adjustIframeHeight(iframe) {
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (!doc) return;
+        const win = iframe.contentWindow || window;
+
+        // In all demos, the content is wrapped in <div id="demo">
+        const demo = doc.getElementById('demo');
+        let contentHeight = 0;
+
+        if (demo) {
+          const rect = demo.getBoundingClientRect();
+          const style = win.getComputedStyle ? win.getComputedStyle(demo) : null;
+          const marginTop = style ? (parseFloat(style.marginTop) || 0) : 0;
+          const marginBottom = style ? (parseFloat(style.marginBottom) || 0) : 0;
+          contentHeight = Math.ceil(Math.max(demo.offsetHeight, demo.scrollHeight, rect.height) + marginTop + marginBottom);
+        } else if (doc.body) {
+          // Fallback if #demo is not present: find bottom-most visible child
+          let maxBottom = 0;
+          for (let i = 0; i < doc.body.children.length; i++) {
+            const child = doc.body.children[i];
+            if (['SCRIPT', 'STYLE'].includes(child.tagName)) continue;
+            if (child.tagName === 'SVG' && (child.style.display === 'none' || child.getAttribute('style')?.includes('display: none'))) continue;
+            const style = win.getComputedStyle ? win.getComputedStyle(child) : null;
+            if (style && (style.display === 'none' || style.position === 'fixed')) continue;
+            const marginBottom = style ? (parseFloat(style.marginBottom) || 0) : 0;
+            const bottom = child.offsetTop + child.offsetHeight + marginBottom;
+            if (bottom > maxBottom) maxBottom = bottom;
+          }
+          contentHeight = maxBottom > 0 ? Math.ceil(maxBottom) : doc.body.offsetHeight;
+        }
+
+        if (contentHeight > 50) {
+          const targetHeight = contentHeight + 12;
+          const currentHeight = parseFloat(iframe.style.height) || 0;
+          if (Math.abs(currentHeight - targetHeight) > 2) {
+            iframe.style.height = targetHeight + 'px';
+          }
+        }
+      } catch (e) {
+        // Cross-origin fallback (not applicable here as same origin)
+      }
+    }
+
+    // Hook each iframe to handle resize, simulation auto-pause/resume, and RAF loop sleep when off-screen
+    function setupIframe(iframe) {
+      let ro = null;
+
+      function initResize() {
+        adjustIframeHeight(iframe);
+        try {
+          const doc = iframe.contentDocument || iframe.contentWindow.document;
+          const RO = (iframe.contentWindow && iframe.contentWindow.ResizeObserver) || window.ResizeObserver;
+          if (doc && RO) {
+            if (ro) ro.disconnect();
+            ro = new RO(() => adjustIframeHeight(iframe));
+            const demo = doc.getElementById('demo');
+            if (demo) ro.observe(demo);
+            if (doc.body) ro.observe(doc.body);
+          }
+        } catch (e) { }
+      }
+
+      function setupRAFThrottling() {
+        try {
+          const win = iframe.contentWindow;
+          if (!win || win._rafThrottled) return;
+          win._rafThrottled = true;
+
+          const realRAF = win.requestAnimationFrame.bind(win);
+          const realCancelRAF = win.cancelAnimationFrame.bind(win);
+          let pendingCbs = [];
+          let isRendering = true;
+
+          win.requestAnimationFrame = function (cb) {
+            if (!isRendering) {
+              const id = Math.floor(Math.random() * 1000000);
+              pendingCbs.push({ id, cb });
+              return id;
+            }
+            return realRAF(cb);
+          };
+
+          win.cancelAnimationFrame = function (id) {
+            pendingCbs = pendingCbs.filter((item) => item.id !== id);
+            realCancelRAF(id);
+          };
+
+          iframe._setRenderActive = function (active) {
+            if (isRendering === active) return;
+            isRendering = active;
+            if (active && pendingCbs.length > 0) {
+              const toRun = pendingCbs.slice();
+              pendingCbs = [];
+              realRAF((t) => {
+                toRun.forEach((item) => {
+                  try { item.cb(t); } catch (err) { }
+                });
+              });
+            }
+          };
+
+          // If iframe is currently offscreen, suspend rendering immediately
+          if (iframe._isCurrentlyVisible === false && iframe._setRenderActive) {
+            iframe._setRenderActive(false);
+          }
+        } catch (e) { }
+      }
+
+      iframe._pauseSimulation = function () {
+        try {
+          const doc = iframe.contentDocument;
+          const pauseIcon = doc ? doc.getElementById('pause') : null;
+          const playPauseBtn = doc ? doc.getElementById('play-pause') : null;
+          // In all demos, pause button is visible when model is actively running
+          const isRunning = pauseIcon && pauseIcon.style.display !== 'none';
+          if (isRunning && playPauseBtn) {
+            iframe._wasAutoPaused = true;
+            playPauseBtn.click();
+          }
+        } catch (e) { }
+      };
+
+      iframe._resumeSimulation = function () {
+        try {
+          if (iframe._wasAutoPaused) {
+            iframe._wasAutoPaused = false;
+            const doc = iframe.contentDocument;
+            const playIcon = doc ? doc.getElementById('play') : null;
+            const playPauseBtn = doc ? doc.getElementById('play-pause') : null;
+            const isPaused = playIcon && playIcon.style.display !== 'none';
+            if (isPaused && playPauseBtn) {
+              playPauseBtn.click();
+            }
+          }
+        } catch (e) { }
+      };
+
+      function onLoaded() {
+        initResize();
+        setupRAFThrottling();
+      }
+
+      iframe.addEventListener('load', onLoaded);
+      try {
+        const doc = iframe.contentDocument || iframe.contentWindow.document;
+        if (doc && (doc.readyState === 'complete' || doc.readyState === 'interactive')) {
+          onLoaded();
+        }
+      } catch (e) { }
+    }
+
+    document.querySelectorAll('.demo-frame').forEach(setupIframe);
+
+    // Viewport IntersectionObserver: Pause simulation & WebGL rendering when scrolled away
+    const demoVisibilityObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const iframe = entry.target;
+        const inView = entry.isIntersecting;
+        iframe._isCurrentlyVisible = inView;
+
+        if (inView) {
+          // Wake up WebGL render loop
+          if (iframe._setRenderActive) iframe._setRenderActive(true);
+          // Auto-resume simulation if it was running before scrolling away
+          if (iframe._resumeSimulation) iframe._resumeSimulation();
+        } else {
+          // Pause simulation while out of view
+          if (iframe._pauseSimulation) iframe._pauseSimulation();
+          // Sleep WebGL render loop (0% idle GPU usage)
+          if (iframe._setRenderActive) iframe._setRenderActive(false);
+        }
+      });
+    }, {
+      rootMargin: '150px 0px 150px 0px', // Wake up 150px before entering screen for seamless viewing
+      threshold: 0.01
+    });
+
+    document.querySelectorAll('.demo-frame').forEach((iframe) => {
+      demoVisibilityObserver.observe(iframe);
+    });
+
+    // Pause header hook videos when scrolled out of view to save CPU decoding
+    const videoObserver = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target;
+        if (entry.isIntersecting && !document.hidden) {
+          video.play().catch(() => { });
+        } else {
+          video.pause();
+        }
+      });
+    }, { threshold: 0.05 });
+
+    document.querySelectorAll('.hook-video').forEach((video) => {
+      videoObserver.observe(video);
+    });
+
+    // Page Visibility API: Pause all demos and videos when tab is switched/minimized
+    document.addEventListener('visibilitychange', () => {
+      const isHidden = document.hidden;
+
+      document.querySelectorAll('.demo-frame').forEach((iframe) => {
+        if (isHidden) {
+          if (iframe._pauseSimulation) iframe._pauseSimulation();
+          if (iframe._setRenderActive) iframe._setRenderActive(false);
+        } else {
+          // Only wake up demos that are currently in the viewport
+          if (iframe._isCurrentlyVisible) {
+            if (iframe._setRenderActive) iframe._setRenderActive(true);
+            if (iframe._resumeSimulation) iframe._resumeSimulation();
+          }
+        }
+      });
+
+      document.querySelectorAll('.hook-video').forEach((video) => {
+        if (isHidden) {
+          video.pause();
+        } else {
+          video.play().catch(() => { });
+        }
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      document.querySelectorAll('.demo-frame').forEach(adjustIframeHeight);
+    });
+  </script>
+</body>
+
+</html>
